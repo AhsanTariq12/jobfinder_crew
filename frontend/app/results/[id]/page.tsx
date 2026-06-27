@@ -4,7 +4,8 @@ import ReactMarkdown from "react-markdown";
 import { notFound } from "next/navigation";
 
 async function getResults(id: string) {
-  const res = await fetch(`http://localhost:8000/api/results/${id}`, {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const res = await fetch(`${API_URL}/results/${id}`, {
     cache: "no-store",
   });
   return res.json();
