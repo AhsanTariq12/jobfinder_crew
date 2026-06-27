@@ -43,6 +43,39 @@ async def create_search(request: SearchRequest):
 
     return {"job_id": job_id, "status": "queued"}
 
+# @app.get("/api/stream/{job_id}")
+# async def stream_progress(job_id: str):
+#     async def event_generator():
+#         pubsub = redis_client.pubsub()
+#         await pubsub.subscribe(f"progress:{job_id}")
+
+#         try:
+#             async for message in pubsub.listen():
+#                 if message["type"] == "message":
+#                     data = message["data"]
+
+#                     # Decode bytes to string if needed
+#                     if isinstance(data, bytes):
+#                         data = data.decode("utf-8")
+
+#                     yield f"data: {data}\n\n"
+
+#                     parsed = json.loads(data)
+#                     if parsed.get("stage") in ("complete", "error", "no_jobs_found"):
+#                         await asyncio.sleep(0.5)
+#                         break
+#         finally:
+#             await pubsub.unsubscribe(f"progress:{job_id}")
+
+#     return StreamingResponse(
+#         event_generator(),
+#         media_type="text/event-stream",
+#         headers={
+#             "Cache-Control": "no-cache",
+#             "X-Accel-Buffering": "no",
+#             "Connection": "keep-alive",
+#         }
+#     )
 @app.get("/api/stream/{job_id}")
 async def stream_progress(job_id: str):
     async def event_generator():
@@ -50,11 +83,19 @@ async def stream_progress(job_id: str):
         await pubsub.subscribe(f"progress:{job_id}")
 
         try:
+            last_keepalive = asyncio.get_event_loop().time()
+
             async for message in pubsub.listen():
+                now = asyncio.get_event_loop().time()
+
+                # Send keepalive comment every 15 seconds
+                if now - last_keepalive > 15:
+                    yield f": keepalive\n\n"
+                    last_keepalive = now
+
                 if message["type"] == "message":
                     data = message["data"]
 
-                    # Decode bytes to string if needed
                     if isinstance(data, bytes):
                         data = data.decode("utf-8")
 
@@ -64,6 +105,7 @@ async def stream_progress(job_id: str):
                     if parsed.get("stage") in ("complete", "error", "no_jobs_found"):
                         await asyncio.sleep(0.5)
                         break
+
         finally:
             await pubsub.unsubscribe(f"progress:{job_id}")
 
@@ -74,9 +116,9 @@ async def stream_progress(job_id: str):
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
+            "X-Content-Type-Options": "nosniff",
         }
     )
-
 @app.get("/api/results/{job_id}")
 async def get_results(job_id: str):
     conn = psycopg2.connect(DATABASE_URL)

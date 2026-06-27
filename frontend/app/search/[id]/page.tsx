@@ -25,41 +25,54 @@ export default function ProgressPage() {
   const stageRef = useRef("started");
 
   useEffect(() => {
+    let es: EventSource;
+    let reconnectTimeout: NodeJS.Timeout;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const es = new EventSource(`${API_URL}/api/stream/${id}`);
 
-    es.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    const connect = () => {
+        es = new EventSource(`${API_URL}/api/stream/${id}`);
 
-      setCurrentStage(data.stage);
-      setMessage(data.message);
-      stageRef.current = data.stage;   // keep ref in sync
+        es.onmessage = (event) => {
+            // Skip keepalive comments
+            if (!event.data || event.data.trim() === "") return;
 
-   // In ProgressPage, update the complete handler
-if (data.stage === "complete") {
-  es.close();
-  if (id && id !== "undefined") {
-    setTimeout(() => router.push(`/results/${id}`), 1500);
-  } else {
-    setError("Invalid search ID. Please try again.");
-  }
-}
-      if (data.stage === "error" || data.stage === "no_jobs_found") {
-        es.close();
-        setError(data.message);
-      }
+            try {
+                const data = JSON.parse(event.data);
+
+                setCurrentStage(data.stage);
+                setMessage(data.message);
+                stageRef.current = data.stage;
+
+                if (data.stage === "complete") {
+                    es.close();
+                    setTimeout(() => router.push(`/results/${id}`), 1500);
+                }
+
+                if (data.stage === "error" || data.stage === "no_jobs_found") {
+                    es.close();
+                    setError(data.message);
+                }
+            } catch (e) {
+                // Ignore parse errors from keepalive lines
+            }
+        };
+
+        es.onerror = () => {
+            es.close();
+            // If not complete, try reconnecting after 2 seconds
+            if (stageRef.current !== "complete") {
+                reconnectTimeout = setTimeout(connect, 2000);
+            }
+        };
     };
 
-    es.onerror = () => {
-      es.close();
-      // Only show error if we never completed successfully
-      if (stageRef.current !== "complete") {
-        setError("Connection lost. Please check if the server is running.");
-      }
-    };
+    connect();
 
-    return () => es.close();
-  }, [id]);
+    return () => {
+        es?.close();
+        clearTimeout(reconnectTimeout);
+    };
+}, [id]);
 
   const completedIndex = STAGES.findIndex(s => s.key === currentStage);
 
