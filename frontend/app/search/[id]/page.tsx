@@ -145,7 +145,7 @@ export default function ProgressPage() {
                   </div>
                   <span className={
                     isComplete ? "text-gray-400 line-through text-sm" :
-                    isCurrent  ? "font-medium text-gray-900 text-sm" :
+                    isCurrent  ? "font-medium text-blue-500 text-sm" :
                                  "text-gray-400 text-sm"
                   }>
                     {stage.label}
