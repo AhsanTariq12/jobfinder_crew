@@ -26,7 +26,7 @@ export default function ProgressPage() {
 
   useEffect(() => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const es = new EventSource(`${API_URL}/stream/${id}`);
+    const es = new EventSource(`${API_URL}/api/stream/${id}`);
 
     es.onmessage = (event) => {
       const data = JSON.parse(event.data);

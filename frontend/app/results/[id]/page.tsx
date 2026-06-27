@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 async function getResults(id: string) {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const res = await fetch(`${API_URL}/results/${id}`, {
+  const res = await fetch(`${API_URL}/api/results/${id}`, {
     cache: "no-store",
   });
   return res.json();
