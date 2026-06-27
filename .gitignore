@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.env
+.env
+
+# Node
+node_modules/
+.next/
+.env.local
+
+# Misc
+output/
+*.log

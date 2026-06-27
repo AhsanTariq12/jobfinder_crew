@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobfinder_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jobfinder_postgres
+    environment:
+      POSTGRES_USER: jobfinder
+      POSTGRES_PASSWORD: jobfinder123
+      POSTGRES_DB: jobfinder
+    ports:
+      - "5432:5432"
+    volumes:
+      - jobfinder_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  jobfinder_pgdata:

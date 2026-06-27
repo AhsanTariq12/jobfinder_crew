@@ -1,0 +1,105 @@
+search_jobs:
+  description: >
+    Search for top 5 active job listings of job type '{job_type}' for the role '{job_role}'
+    in '{location}'.
+    Company filter: '{company}'. (CRITICAL: If the company parameter is 'Not Provided' or empty, ignore the company constraint entirely and search for any matching companies).
+    Find real, currently active job postings posted within last 30 days.
+    Return the job title, company name, location, and job URL for each posting.
+
+  agent: job_researcher
+
+  expected_output: >
+    A JSON object containing a jobs array.
+    The jobs array must contain at most 5 job listings.
+    Each job should include:
+    - job_title
+    - company_name
+    - company_location
+    - job_url
+    - job_posting_date
+    - job_source
+    (IMPORTANT: Don't output any extra word just that what is required from you in the task)
+
+  output_file: output/jobs_searched.json
+
+
+analyze_jobs:
+  description: >
+    Analyze the following job listing details:
+    - Job Title: {job_title}
+    - Company Name: {company_name}
+    - Job Location: {job_location}
+    - Job URL: {job_url}
+
+    If the Job URL is valid and accessible (starts with 'http'), use the ScrapeWebsite tool to fetch and analyze the page content directly.
+    
+    If the Job URL is missing, invalid, inaccessible, or blocked:
+    - Perform a Google search (using Serper) for: "{job_title} at {company_name} job description".
+    - Gather reliable job requirements from search results.
+    - Clearly document in the report if certain details could not be retrieved.
+    - Never hallucinate or guess details.
+
+    Extract core responsibilities, required technical skills, required experience level, and salary info if listed.
+
+  agent: job_analyst
+
+  expected_output: >
+    A detailed analysis report for this specific job listing.
+
+    Format:
+    - Job Title: [Job Title]
+    - Company: [Company Name]
+    - Overview: [Brief summary of the role]
+    - Responsibilities: [Key duties]
+    - Required Skills: [List of skills]
+    - Experience Required: [Experience levels]
+    - Salary: [Salary information if found, else state not listed]
+    - Why this role matters: [Impact of this role]
+    (IMPORTANT: Don't output any extra word just that what is required from you in the task)
+
+
+identify_skills:
+  description: >
+    Based on the job analysis report provided below, identify the most critical skills required.
+    Categorize skills as Must Have, Good to Have, and Bonus.
+
+    Example format:
+    Must Have:
+    1. Python
+       Appeared in 5/5 jobs
+    2. SQL
+       Appeared in 4/5 jobs
+
+    Job Analysis Report:
+    {job_analysis_report}
+
+  agent: skills_advisor
+
+  expected_output: >
+    Prioritized skills list in three categories:
+    Must Have,
+    Good to Have,
+    Bonus
+    (IMPORTANT: Don't output any extra word just that what is required from you in the task)
+
+  output_file: output/skills_to_have.md
+
+
+prepare_for_interview:
+  description: >
+    Provide a summarized roadmap for preparing for the identified jobs based on the prioritized skills and job analysis details provided below.
+
+    Prioritized Skills List:
+    {skills_list}
+
+    Job Analysis Report:
+    {job_analysis_report}
+
+
+  agent: preparation_planner
+
+  expected_output: >
+    Summarized interview preparation guide.
+    (IMPORTANT: Don't output any extra word just that what is required from you in the task)
+
+  output_file: output/interview_prep.md
