@@ -11,7 +11,6 @@ import json
 import psycopg2
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://jobfinder:jobfinder123@localhost:5432/jobfinder")
 app = FastAPI()
 
 app.add_middleware(
@@ -20,9 +19,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+import os
 
-redis_client = aioredis.from_url("redis://localhost:6379")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://jobfinder:jobfinder123@localhost:5432/jobfinder")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+redis_client = aioredis.from_url(REDIS_URL)
 @app.post("/api/search", response_model=SearchResponse)
 async def create_search(request: SearchRequest):
     job_id = str(uuid4())
