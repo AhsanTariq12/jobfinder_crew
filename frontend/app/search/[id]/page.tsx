@@ -4,9 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 
 const STAGES = [
-  { key: "queued",    label: "Waiting to start"             },
-  { key: "running",   label: "Searching & analyzing jobs"   },
-  { key: "complete",  label: "Results ready"                },
+  { key: "queued",    label: "Waiting to start"           },
+  { key: "running",   label: "Searching & analyzing jobs" },
+  { key: "complete",  label: "Results ready"              },
 ];
 
 const MESSAGES: Record<string, string[]> = {
@@ -25,30 +25,50 @@ const MESSAGES: Record<string, string[]> = {
 };
 
 export default function ProgressPage() {
-  const params  = useParams();
-  const id      = params.id as string;
-  const router  = useRouter();
+  const params = useParams();
+  const id     = params.id as string;
+  const router = useRouter();
 
   const [status,       setStatus]       = useState("queued");
   const [messageIndex, setMessageIndex] = useState(0);
   const [error,        setError]        = useState<string | null>(null);
   const [elapsed,      setElapsed]      = useState(0);
 
-  const statusRef     = useRef("queued");
-  const intervalRef   = useRef<NodeJS.Timeout | null>(null);
+  const statusRef      = useRef("queued");
+  const intervalRef    = useRef<NodeJS.Timeout | null>(null);
   const msgIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const elapsedRef    = useRef<NodeJS.Timeout | null>(null);
+  const elapsedRef     = useRef<NodeJS.Timeout | null>(null);
+  const notFoundCount  = useRef(0); // track consecutive not_found
 
   useEffect(() => {
     if (!id || id === "undefined") return;
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    // Poll status every 3 seconds
+    const cleanup = () => {
+      if (intervalRef.current)    clearInterval(intervalRef.current);
+      if (msgIntervalRef.current) clearInterval(msgIntervalRef.current);
+      if (elapsedRef.current)     clearInterval(elapsedRef.current);
+    };
+
     const poll = async () => {
       try {
         const res  = await fetch(`${API_URL}/api/status/${id}`);
         const data = await res.json();
+
+        if (data.status === "not_found") {
+          // Keep polling — worker might not have inserted the row yet
+          // Only error out after 10 consecutive not_found (~30 seconds)
+          notFoundCount.current += 1;
+          if (notFoundCount.current > 10) {
+            cleanup();
+            setError("Search could not be found. Please try again.");
+          }
+          return;
+        }
+
+        // Reset counter once we find the row
+        notFoundCount.current = 0;
 
         setStatus(data.status);
         statusRef.current = data.status;
@@ -63,18 +83,11 @@ export default function ProgressPage() {
           setError("Something went wrong. Please try again.");
         }
 
-        if (data.status === "not_found") {
-          cleanup();
-          setError("Search not found. Please try again.");
-        }
-
       } catch (e) {
-        // Network error - keep polling silently
         console.error("Poll error:", e);
       }
     };
 
-    // Rotate through messages every 8 seconds while running
     const rotateMessages = () => {
       setMessageIndex(i => {
         const messages = MESSAGES[statusRef.current] || MESSAGES.running;
@@ -82,16 +95,9 @@ export default function ProgressPage() {
       });
     };
 
-    // Track elapsed time
     const tickElapsed = () => setElapsed(s => s + 1);
 
-    const cleanup = () => {
-      if (intervalRef.current)    clearInterval(intervalRef.current);
-      if (msgIntervalRef.current) clearInterval(msgIntervalRef.current);
-      if (elapsedRef.current)     clearInterval(elapsedRef.current);
-    };
-
-    poll(); // immediate first poll
+    poll();
     intervalRef.current    = setInterval(poll,           3000);
     msgIntervalRef.current = setInterval(rotateMessages, 8000);
     elapsedRef.current     = setInterval(tickElapsed,    1000);
@@ -103,7 +109,7 @@ export default function ProgressPage() {
   const currentMessage  = currentMessages[messageIndex % currentMessages.length];
 
   const formatElapsed = (s: number) => {
-    const m = Math.floor(s / 60);
+    const m   = Math.floor(s / 60);
     const sec = s % 60;
     return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
   };
@@ -128,12 +134,11 @@ export default function ProgressPage() {
       ) : (
         <div className="w-full max-w-sm space-y-6">
 
-          {/* Stage indicators */}
           <div className="space-y-4">
             {STAGES.map((stage, i) => {
-              const stageIndex   = STAGES.findIndex(s => s.key === status);
-              const isComplete   = i < stageIndex;
-              const isCurrent    = stage.key === status;
+              const stageIndex = STAGES.findIndex(s => s.key === status);
+              const isComplete = i < stageIndex;
+              const isCurrent  = stage.key === status;
 
               return (
                 <div key={stage.key} className="flex items-center gap-3">
@@ -155,7 +160,6 @@ export default function ProgressPage() {
             })}
           </div>
 
-          {/* Animated message */}
           <div className="text-center pt-2">
             <p className="text-sm text-gray-500 animate-pulse">
               {currentMessage}
