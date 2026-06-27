@@ -22,6 +22,10 @@ app.add_middleware(
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://jobfinder:jobfinder123@localhost:5432/jobfinder")
+
+# Railway gives postgres:// but psycopg2 needs postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 redis_client = aioredis.from_url(REDIS_URL)

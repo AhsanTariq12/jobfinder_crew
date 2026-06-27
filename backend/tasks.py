@@ -13,8 +13,12 @@ from job_finder_crew.main import JobFinderFlow
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
+
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://jobfinder:jobfinder123@localhost:5432/jobfinder")
 
+# Railway gives postgres:// but psycopg2 needs postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 def publish_progress(job_id: str, data: dict):
     data["job_id"] = job_id
