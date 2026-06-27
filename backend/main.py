@@ -119,6 +119,27 @@ async def stream_progress(job_id: str):
             "X-Content-Type-Options": "nosniff",
         }
     )
+
+
+@app.get("/api/status/{job_id}")
+async def get_status(job_id: str):
+    conn = None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT status FROM searches WHERE id = %s",
+            (job_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"status": "not_found"}
+        return {"status": row[0]}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+    finally:
+        if conn:
+            conn.close()
 @app.get("/api/results/{job_id}")
 async def get_results(job_id: str):
     conn = psycopg2.connect(DATABASE_URL)
